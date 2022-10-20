@@ -1,0 +1,2 @@
+# ignore local .env config (may contains secret etc)
+.env

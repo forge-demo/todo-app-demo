@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=https://gist.githubusercontent.com/bcho/e19fa748745a985aa7393530acff24fa/raw/c7a653834a117405c3dfbcd60cccc94949d3ef3f/forge-devkit-component.json
+apiVersion: v1alpha1
+kind: Component
+metadata:
+  name: stats-api
+profiles:
+  - name: default
+    kubernetes:
+      pod:
+        name: stats-api
+        mainEntryContainerImage: forgedev.azurecr.io/devkit-containers/node:v2022092002
+        mainEntryContainer: stats-api
+      patches:
+        - clonePod:
+            selector:
+              matchLabels:
+                name: stats-api
+        - # below is a sample pod spec for current project, please edit based on the project settings
+          podSpec: pod-spec.yaml
+    serviceMeshes:
+      - inCluster:
+          service: stats-api
+        name: stats-api
+      - toLocal:
+          targetService: stats-api
+          ports:
+            - port: 3001
+        name: stats-api-to-local
