@@ -38,13 +38,14 @@ Wait a couple of minutes to wait for pod start up:
 ```
 $ kubectl -n devkit-todo-app-demo get pods
 NAME                            READY   STATUS    RESTARTS   AGE
-database-api-69b87c7bd8-rbhln   1/1     Running   0          51m
-frontend-5865c6f8df-7k44s       1/1     Running   0          51m
-stats-api-589b6b8444-f97rm      1/1     Running   0          51m
-stats-cache-55494d9d48-ssrbq    1/1     Running   0          51m
-stats-queue-5c9d6c5597-9dtdx    1/1     Running   0          51m
-stats-worker-b745b6cd9-6ttn9    1/1     Running   0          51m
-todos-db-698dc6d64-tkr7j        1/1     Running   0          51m
+NAME                            READY   STATUS    RESTARTS      AGE
+database-api-69b87c7bd8-z6976   1/1     Running   0             23s
+frontend-5865c6f8df-kxsmx       1/1     Running   0             24s
+stats-api-5dc6dcb667-gf8j7      1/1     Running   0             25s
+stats-cache-55494d9d48-zfhsl    1/1     Running   0             27s
+stats-queue-5c9d6c5597-skbjk    1/1     Running   0             26s
+stats-worker-b745b6cd9-64mr2    1/1     Running   2 (16s ago)   26s
+todos-db-698dc6d64-vdn2g        1/1     Running   0             25s
 ```
 
 Then get the service IP for the frontend service:
@@ -52,11 +53,13 @@ Then get the service IP for the frontend service:
 ```
 $ kubectl -n devkit-todo-app-demo get svc frontend
 NAME       TYPE           CLUSTER-IP    EXTERNAL-IP     PORT(S)        AGE
-frontend   LoadBalancer   10.0.42.147   <some-public-ip>   80:30994/TCP   51m
+frontend   LoadBalancer   10.0.42.147   <a-public-ip>   80:30994/TCP   51m
 ```
 
-And open the frontend service in a browser with `http://<some-public-ip>`.
-If you can see a todo app in the browser, this means the demo is working.
+And open the frontend service in a browser with `http://<a-public-ip>/stats`.
+If you can see a todo app similar to below in the browser, this means the demo is working:
+
+![](./docs/images/stats-init.png)
 
 ## Devkit Usage Steps
 
@@ -72,13 +75,12 @@ This demo has been setup with the devkit settings in below:
 ```
 # NOTE: this command might take a while for initial run as we need to sync the whole folder to remote...
 $ devkit go --namespace devkit-todo-app-demo
-checking devkit pod status
-devkit pod devkit-todo-app-demo/stats-api is ready
-forwarding remote ports to local
-preparing workspace
-connecting to remote
+✅ devkit pod devkit-todo-app-demo/stats-api is ready
+✅ forwarding remote ports to local
+✅ workspace sync finished
+✅ connected
 devkit ➜ /workspace $ ls
-README.md  database-api  deployment.yaml  devkit.md  frontend  images  license.md  stats-api  stats-api-svc-patch.yaml  stats-worker
+README.md  database-api  deployment.yaml  frontend  images  license.md  stats-api  stats-worker
 ```
 
 If you can see output like above, which means now you have entered the devkit environment successfully.
@@ -102,55 +104,39 @@ devkit ➜ /workspace/stats-api $ npm run start
 Listening on port 3001
 ```
 
-Now the process is up and listening on port 3000.
+Now the process is up and listening on port 3001.
 
-### 3. "Bridging" `stats-api` service
+### 3. "Bridge" `stats-api` service
 
 Now open another terminal and run the following command:
 
 ```
-$ kubectl -n devkit-todo-app-demo get pods
-NAME                            READY   STATUS    RESTARTS   AGE
-database-api-69b87c7bd8-rbhln   1/1     Running   0          81m
-frontend-5865c6f8df-7k44s       1/1     Running   0          81m
-stats-api                       1/1     Running   0          8m58s
-stats-api-589b6b8444-f97rm      1/1     Running   0          81m
-stats-cache-55494d9d48-ssrbq    1/1     Running   0          81m
-stats-queue-5c9d6c5597-9dtdx    1/1     Running   0          81m
-stats-worker-b745b6cd9-6ttn9    1/1     Running   0          81m
-todos-db-698dc6d64-tkr7j        1/1     Running   0          81m
+$ devkit wire --namespace devkit-todo-app-demo
+wiring services...
+wired service "stats-api" in cluster
+forwarded port(s):
+  - 3001 -> 3001
+to local
+all set, stop with ctrl+c
 ```
 
-We can see that, the devkit pod is running with name `stats-api`. This pod is running with labels:
+This command:
+
+- redirects the `stats-api` service traffic to the dev pod
+- forwards dev pod's 3001 port to local
+
+Now, go back to the browser and refresh the "stats" page: you should be able to see some logs from the first terminal:
 
 ```
-$ kubectl -n devkit-todo-app-demo get pods stats-api -o json | jq '.metadata.labels'
-{
-  "devkit/component": "stats-api",
-  "devkit/profile": "default"
-}
-```
-
-By default, the in-cluster traffic will not be redirected to this pod.
-We need to mutate the service to make it work:
-
-```
-$ kubectl -n devkit-todo-app-demo apply -f stats-api-svc-patch.yaml
-```
-
-This will redirect the in-cluster traffic to the `stats-api` pod.
-Now, go back to the browser and click to the "stats" page: you should be able to see some numbers,
-which means the requests have been served from the `stats-api` pod. We can also confirm with the devkit shell output:
-
-```
-...previous output
 request for stats received with kubernetes-route-as header: undefined
-sending back response: {"todosCreated":"2","todosCompleted":0,"todosDeleted":0}
+sending back response: {"todosCreated":0,"todosCompleted":0,"todosDeleted":0}
 ```
 
-### 4. Making code change
+which means the requests have been served from the `stats-api` pod. 
 
-Now everything is ready and we can make some code change. For example, we can edit the `server.js` in local:
+### 4. Make code change
+
+Now everything is ready and we can make some code changes. For instance, we edit the `stats-api/server.js` in local:
 
 ```diff
      var resp = {
@@ -169,9 +155,16 @@ devkit ➜ /workspace/stats-api $ npm run start
 ...omitted output
 ```
 
-Now the process is using the updated code - we can verify by refreshing from browser, which should show the updated numbers
-in both the page and the devkit shell:
+Now the process is using the updated code - we can verify by refreshing from browser, which should show the updated numbers:
+
+![](./docs/images/stats-42.png)
+
+While in the dev pod shell:
 
 ```
-sending back response: {"todosCreated":"2","todosCompleted":42,"todosDeleted":0}
+sending back response: {"todosCreated":"0","todosCompleted":42,"todosDeleted":0}
 ```
+
+### 5. Clean up
+
+After making the code changes and debugging, we can exit the devkit shell by `exit` and stop the wire process with `ctrl-c`. Now if we refresh the stats page, we should see the page is back to original state.
