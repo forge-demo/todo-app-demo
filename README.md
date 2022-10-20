@@ -68,7 +68,6 @@ If you can see a todo app similar to below in the browser, this means the demo i
 This demo has been setup with the devkit settings in below:
 
 - `.devkit/` directory: store the devkit configs
-- `.devkit-root`: specifies the root of the project (we only want to sync this demo folder for now)
 
 ### 1. Spawn devkit environment
 
