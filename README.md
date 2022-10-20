@@ -168,3 +168,7 @@ sending back response: {"todosCreated":"0","todosCompleted":42,"todosDeleted":0}
 ### 5. Clean up
 
 After making the code changes and debugging, we can exit the devkit shell by `exit` and stop the wire process with `ctrl-c`. Now if we refresh the stats page, we should see the page is back to original state.
+
+---
+
+That's it! Now you have a basic understanding of how to use devkit. To learn more, please check out devkit's doc 📑.
